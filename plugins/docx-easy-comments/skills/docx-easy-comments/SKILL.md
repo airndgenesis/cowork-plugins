@@ -158,11 +158,28 @@ The tool always outputs JSON to stdout.
 - If the service is unreachable, inform the user.
 - Exit code 2 means the output file was still written — report both the success and the failures to the user.
 
+## Reading document content with pandoc
+
+To read the text of a .docx file before annotating, you are recommented to use **pandoc** to convert it to markdown:
+
+```bash
+pandoc "input.docx" -t markdown -o /tmp/input_preview.md
+```
+
+Then read the resulting markdown file to understand the document's structure and content.
+
+**Why this matters:**
+- You need to see the actual text to craft accurate `find` strings that match exactly.
+- Markdown output preserves headings, lists, tables, and emphasis — giving you a faithful view of the document's structure.
+- This avoids blind guessing and dramatically reduces partial-match errors.
+
+> **Note:** If `pandoc` is not installed, try something else
+
 ## Workflow
 
 1. Ask the user which .docx file to annotate (or use the one they provided).
-2. Read or understand the document content if needed to craft good annotations.
-3. Build the annotations array based on the user's request.
+2. **Convert the .docx to markdown with pandoc** and read the result to understand the document content.
+3. Build the annotations array based on the user's request, copying `find` strings verbatim from the pandoc output.
 4. Write the annotations to a temporary JSON file.
 5. Run the tool with `--json`.
 6. Report results. If there are partial errors, offer to retry the failed ones.
