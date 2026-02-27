@@ -8,7 +8,7 @@ allowed-tools: Read, Write, Bash
 
 You have access to a tool that adds comments, tracked replacements, deletions, and insertions to Word (.docx) documents. The tool is a Python CLI at:
 
-```
+```bash
 ${SKILL_DIR}/annotate.py
 ```
 
@@ -42,17 +42,40 @@ python3 "${SKILL_DIR}/annotate.py" <input.docx> <output.docx> '<annotations_json
 
 ## Annotation JSON format
 
-The annotations JSON is an **array** of objects. Each entry targets text using the `find` field.
+The annotations JSON is an **array** of objects.
 
-### Comment
+### Preferred targeting: `find`
 
 ```json
 {
   "type": "Comment",
   "find": "The Seller shall indemnify the Buyer against all losses",
-  "comment": "**Issue:** This indemnification is *overly broad*.\n\n**Recommendation:** Limit to ~~all losses~~ ***direct*** losses only."
+  "comment": "**Issue:** This indemnification is *overly broad*."
 }
 ```
+
+You can disambiguate repeated matches with:
+
+```json
+{ "occurrence": 2 }
+```
+
+### Fallback targeting: paragraph/sentence indexes
+
+If needed, you can target by position instead of text:
+
+```json
+{
+  "type": "Comment",
+  "paragraphIndex": 12,
+  "sentenceIndex": 0,
+  "comment": "Please verify this statement."
+}
+```
+
+- `paragraphIndex` is zero-based across the document.
+- `sentenceIndex` is zero-based within the paragraph.
+- Omit `sentenceIndex` (or set `-1`) to target the whole paragraph.
 
 ### Replace (tracked change)
 
@@ -99,37 +122,39 @@ Comment bodies, replacement text, and insertion text support inline markdown tha
 
 Newlines (`\n`) in comment text create separate paragraphs in the comment bubble.
 
-## Text matching
+## Text matching behavior (`find`)
 
-The `find` field locates text using a three-pass search:
+The service resolves `find` using multiple passes:
 
-1. **Exact match** — literal string comparison
-2. **Normalized match** — collapses whitespace, smart quotes → ASCII, dashes normalized
-3. **Dehyphenated match** — strips hyphens between lowercase letters (handles PDF-to-Word artifacts)
+1. Exact match (ordinal)
+2. Normalized match (whitespace, smart quotes, dash variants, invisible characters)
+3. Dehyphenated match (handles PDF-to-Word artifacts like `con-cepts`)
+4. Case-insensitive dehyphenated match
+5. Cross-paragraph search (windowed, including hyphenated paragraph boundary joins)
 
-Use `"occurrence": 2` to target the second occurrence (1-based, defaults to 1).
+If no match is found, the service may return `closestMatches` hints.
 
 ## Important guidelines
 
-1. **Always write annotations JSON to a temp file** and use `--json <file>` rather than inline JSON to avoid shell quoting issues.
-2. **Use long, unique `find` strings** — copy enough surrounding text to uniquely identify the target passage. Short strings may match in the wrong place.
-3. **Copy `find` text exactly** from the document. Do not paraphrase or rephrase — the matching is literal.
-4. **Check the output carefully.** The tool returns structured JSON to stdout.
+1. **Prefer writing annotations JSON to a temp file** and using `--json <file>` to avoid shell quoting issues.
+2. **Use long, unique `find` strings** to avoid matching the wrong place.
+3. **Copy `find` text exactly** from the document whenever possible.
+4. **Check tool output JSON** and handle errors explicitly.
 
 ## Output format
 
-The tool always outputs JSON to stdout.
+The CLI always outputs JSON to stdout.
 
 **Success** (exit code 0):
 ```json
 { "ok": true, "output": "/absolute/path/to/output.docx" }
 ```
 
-**Partial success** — file written but some annotations failed (exit code 2):
+**Annotation validation/apply failure from API** (exit code 2, HTTP 422 upstream):
 ```json
 {
-  "ok": true,
-  "output": "/absolute/path/to/output.docx",
+  "ok": false,
+  "error": "One or more annotations could not be applied.",
   "errors": [
     {
       "index": 1,
@@ -147,40 +172,36 @@ The tool always outputs JSON to stdout.
 }
 ```
 
-**Fatal error** — no file written (exit code 1):
+**Fatal error** (exit code 1):
 ```json
 { "ok": false, "error": "Cannot connect to annotation service..." }
 ```
 
 ## Error handling
 
-- If you get partial errors with `closestMatches`, use those hints to fix the `find` text and retry only the failed annotations.
+- If you get `errors` with `closestMatches`, adjust `find` text and retry.
 - If the service is unreachable, inform the user.
-- Exit code 2 means the output file was still written — report both the success and the failures to the user.
+- The API applies annotations atomically for resolve failures: if any target cannot be resolved, no annotated output file is returned.
 
 ## Reading document content with pandoc
 
-To read the text of a .docx file before annotating, you are recommented to use **pandoc** to convert it to markdown:
+To inspect a .docx before annotating, use **pandoc** to convert it to markdown:
 
 ```bash
 pandoc "input.docx" -t markdown -o /tmp/input_preview.md
 ```
 
-Then read the resulting markdown file to understand the document's structure and content.
+Then read the markdown file to craft accurate `find` strings.
 
-**Why this matters:**
-- You need to see the actual text to craft accurate `find` strings that match exactly.
-- Markdown output preserves headings, lists, tables, and emphasis — giving you a faithful view of the document's structure.
-- This avoids blind guessing and dramatically reduces partial-match errors.
-
-> **Note:** If `pandoc` is not installed, try something else
+> If `pandoc` is not installed, use another extraction approach.
 
 ## Workflow
 
-1. Ask the user which .docx file to annotate (or use the one they provided).
-2. **Convert the .docx to markdown with pandoc** and read the result to understand the document content.
-3. Build the annotations array based on the user's request, copying `find` strings verbatim from the pandoc output.
-4. Write the annotations to a temporary JSON file.
+1. Ask the user which .docx file to annotate (or use the one provided).
+2. Convert the .docx to markdown with pandoc and inspect content.
+3. Build annotations, preferring `find` targeting and exact copied snippets.
+4. Write annotations to a temporary JSON file.
 5. Run the tool with `--json`.
-6. Report results. If there are partial errors, offer to retry the failed ones.
+6. Report results; if failures occur, fix and retry.
 7. Tell the user where the output file is.
+

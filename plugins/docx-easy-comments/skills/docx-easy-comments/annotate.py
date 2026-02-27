@@ -16,8 +16,8 @@ The JSON is an array of annotations:
   ]
 
 Outputs structured JSON to stdout:
-  { "ok": true,  "output": "/path/to/out.docx", "errors": [] }
-  { "ok": false, "error": "..." }
+  { "ok": true,  "output": "/path/to/out.docx" }
+  { "ok": false, "error": "...", "errors": [...] }
 
 Requires: requests  (pip install requests)
 """
@@ -62,13 +62,22 @@ while i < len(args):
             bail(f"Cannot read JSON file: {e}")
     elif arg == "--url":
         i += 1
-        service_url = args[i]
+        try:
+            service_url = args[i]
+        except IndexError:
+            bail("Missing value for --url")
     elif arg == "--author":
         i += 1
-        author = args[i]
+        try:
+            author = args[i]
+        except IndexError:
+            bail("Missing value for --author")
     elif arg == "--initials":
         i += 1
-        initials = args[i]
+        try:
+            initials = args[i]
+        except IndexError:
+            bail("Missing value for --initials")
     elif arg in ("--help", "-h"):
         print(
             "Usage: python3 annotate.py <input.docx> <output.docx> '<json>' [options]\n"
@@ -101,7 +110,7 @@ if annotations_json is None and len(positional) > 2:
     annotations_json = positional[2]
 
 if not input_path or not output_path or not annotations_json:
-    bail("Usage: python3 annotate.py <input.docx> <output.docx> '<json>' [--url URL]")
+    bail("Usage: python3 annotate.py <input.docx> <output.docx> '<json>' [--json FILE] [--url URL] [--author NAME] [--initials XX]")
 
 # Validate the JSON early so the agent gets a clear error
 try:
@@ -144,9 +153,20 @@ except requests.RequestException as e:
 if resp.status_code != 200:
     try:
         err = resp.json()
-        bail(err.get("error", resp.text[:500]))
     except (json.JSONDecodeError, ValueError):
         bail(resp.text[:500])
+
+    # API contract: 422 means one or more annotations could not be resolved/applied.
+    # No output file is returned in this case.
+    if resp.status_code == 422 and isinstance(err, dict) and isinstance(err.get("errors"), list):
+        print(json.dumps({
+            "ok": False,
+            "error": "One or more annotations could not be applied.",
+            "errors": err["errors"],
+        }, indent=2))
+        sys.exit(2)
+
+    bail(err.get("error", resp.text[:500]))
 
 try:
     import base64
@@ -156,13 +176,9 @@ try:
     with open(out_path, "wb") as f:
         f.write(base64.b64decode(envelope["file"]))
 
-    result = {"ok": True, "output": out_path}
-    errors = envelope.get("errors", [])
-    if errors:
-        result["errors"] = errors
-
-    print(json.dumps(result, indent=2))
-    sys.exit(2 if errors else 0)
+    print(json.dumps({"ok": True, "output": out_path}, indent=2))
+    sys.exit(0)
 
 except (KeyError, json.JSONDecodeError, ValueError, IOError) as e:
     bail(f"Unexpected response from service: {e}")
+
