@@ -1,0 +1,23 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "docx-easy-comments",
+  "owner": {
+    "name": "mark"
+  },
+  "metadata": {
+    "description": "Add comments, tracked changes, and insertions to Word documents using AI",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "docx-easy-comments",
+      "source": "./plugins/docx-easy-comments",
+      "description": "Annotate Word (.docx) documents with comments, tracked replacements, deletions, and insertions via a slash command",
+      "version": "1.0.0",
+      "license": "MIT",
+      "keywords": ["docx", "word", "comments", "annotations", "tracked-changes", "review"],
+      "category": "document-tools",
+      "strict": true
+    }
+  ]
+}
