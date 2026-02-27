@@ -22,7 +22,8 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { request } from "node:http";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 
 // ── Parse args ──────────────────────────────────────────────
 
@@ -148,11 +149,12 @@ const parts = Buffer.concat([
 // ── Send request ────────────────────────────────────────────
 
 const url = new URL("/api/annotate", serviceUrl);
+const request = url.protocol === "https:" ? httpsRequest : httpRequest;
 
 const req = request(
   {
     hostname: url.hostname,
-    port: url.port,
+    port: url.port || (url.protocol === "https:" ? 443 : 80),
     path: url.pathname,
     method: "POST",
     headers: {
