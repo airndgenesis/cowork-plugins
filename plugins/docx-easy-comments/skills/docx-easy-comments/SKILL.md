@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Bash
 You have access to a tool that adds comments, tracked replacements, deletions, and insertions to Word (.docx) documents. The tool is a Python CLI at:
 
 ```
-${CLAUDE_PLUGIN_ROOT}/annotate.py
+${SKILL_DIR}/annotate.py
 ```
 
 ## When to use this
@@ -22,13 +22,13 @@ Use this skill when the user wants to:
 ## How to use the tool
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/annotate.py" <input.docx> <output.docx> --json <annotations.json>
+python3 "${SKILL_DIR}/annotate.py" <input.docx> <output.docx> --json <annotations.json>
 ```
 
 Or with inline JSON:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/annotate.py" <input.docx> <output.docx> '<annotations_json>'
+python3 "${SKILL_DIR}/annotate.py" <input.docx> <output.docx> '<annotations_json>'
 ```
 
 ### Options
