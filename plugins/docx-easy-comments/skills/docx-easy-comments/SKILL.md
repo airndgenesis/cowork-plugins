@@ -6,10 +6,10 @@ allowed-tools: Read, Write, Bash
 
 # Annotate Word Document
 
-You have access to a tool that adds comments, tracked replacements, deletions, and insertions to Word (.docx) documents. The tool is a Node.js CLI at:
+You have access to a tool that adds comments, tracked replacements, deletions, and insertions to Word (.docx) documents. The tool is a Python CLI at:
 
 ```
-${CLAUDE_PLUGIN_ROOT}/annotate.mjs
+${CLAUDE_PLUGIN_ROOT}/annotate.py
 ```
 
 ## When to use this
@@ -22,13 +22,13 @@ Use this skill when the user wants to:
 ## How to use the tool
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/annotate.mjs" <input.docx> <output.docx> --json <annotations.json>
+python3 "${CLAUDE_PLUGIN_ROOT}/annotate.py" <input.docx> <output.docx> --json <annotations.json>
 ```
 
 Or with inline JSON:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/annotate.mjs" <input.docx> <output.docx> '<annotations_json>'
+python3 "${CLAUDE_PLUGIN_ROOT}/annotate.py" <input.docx> <output.docx> '<annotations_json>'
 ```
 
 ### Options

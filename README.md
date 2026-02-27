@@ -31,16 +31,17 @@ All annotations support **inline markdown** (`**bold**`, `*italic*`, `~~striketh
 
 ```
 ┌──────────────┐        HTTP multipart        ┌──────────────────┐
-│ annotate.mjs │  ──── POST /api/annotate ──► │  C# service      │
+│ annotate.py  │  ──── POST /api/annotate ──► │  C# service      │
 │ (CLI wrapper) │ ◄── JSON { ok, file, errors} │  (Open XML SDK)  │
 └──────────────┘                              └──────────────────┘
 ```
 
-The plugin ships a zero-dependency Node.js CLI (`annotate.mjs`) that sends the document and annotations to a hosted annotation service. The service handles all Open XML manipulation and returns the annotated document.
+The plugin ships a Python CLI (`annotate.py`) that sends the document and annotations to a hosted annotation service. The service handles all Open XML manipulation and returns the annotated document.
 
 ## Requirements
 
-- **Node.js** ≥ 18 (uses built-in `node:http`, `node:fs`, `node:path`)
+- **Python 3** ≥ 3.8
+- **requests** library (`pip install requests`)
 - Internet access to reach the annotation service at `https://comments-service.edumagick.com/`
 
 ## Example
